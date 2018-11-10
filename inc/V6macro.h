@@ -1,0 +1,13 @@
+#pragma once
+
+#define V6GAMETITLE					"Volta Engine......"
+#define V6WINDOWWIDTH				800
+#define V6WINDOWHEIGHT				600
+#define V6SW_FULLSCREEN 			3
+#define V6SW_WINDOW					1
+#define V6WS_FULLSCREEN				WS_VISIBLE|WS_POPUP|WS_EX_TOPMOST
+#define V6WS_WINDOW					WS_OVERLAPPEDWINDOW
+
+#define V6COLOR			XMFLOAT4
+#define PAIRVS          pair<string, ID3D11VertexShader*>
+#define PAIRPS          pair<string, ID3D11PixelShader*>
