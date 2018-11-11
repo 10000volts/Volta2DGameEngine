@@ -20,10 +20,10 @@ namespace VoltaEngine{
 		float xxx = -1.0f + static_cast<float>(X + Width) / V6WINDOWWIDTH * 2.0f, yy = 1.0f - static_cast<float>(Y + Height) / V6WINDOWHEIGHT * 2.0f;
 		UVVertex vertices[] =
 		{
-			{ xx, yy, Priority, 1.0f, 1.0f },
-			{ xx, yyy, Priority, 1.0f, 0.0f },
-			{ xxx, yy, Priority, 0.0f, 1.0f },
-			{ xxx, yyy, Priority, 0.0f, 0.0f },
+			{ xx, yy, Priority, 0.0f, 1.0f },
+			{ xx, yyy, Priority, 0.0f, 0.0f },
+			{ xxx, yy, Priority, 1.0f, 1.0f },
+			{ xxx, yyy, Priority, 1.0f, 0.0f },
 		};
 
 		D3D11_SUBRESOURCE_DATA resourceData;
