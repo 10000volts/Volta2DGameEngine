@@ -11,21 +11,21 @@ namespace VoltaEngine{
 		void Clear();
 		inline void AddSprite(LogicSprite* s){ Sprites.push_back(s); }
 		inline void AddStep(LogicStep* s){ Steps.push_back(s); }
-		inline void RemoveSprite(LogicSprite* s){ Sprites.remove(s); delete s; s = 0; }
-		inline void RemoveStep(LogicStep* s){ Steps.remove(s); delete s; s = 0; }
+		inline void RemoveSprite(LogicSprite* s){ Sprites.remove(s); delete s; s = nullptr; }
+		inline void RemoveStep(LogicStep* s){ Steps.remove(s); delete s; s = nullptr; }
 	protected:
 		list<LogicSprite*> Sprites;
 		list<LogicStep*> Steps;
 	};
 	class VoltaLogicEngine{
 	public:
-		static inline void Update(int t){
-			Manager.Update(t);
-		}
-		static void Dispose(){
+		static void Update(int t);
+		inline static void Dispose(){
 			Manager.Clear();
 		}
 		// 其实应该作封装。
 		static LogicManager Manager;
+		// 全局时间。
+		static int g_time;
 	};
 }

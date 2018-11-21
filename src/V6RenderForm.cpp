@@ -1,6 +1,11 @@
 #include "..\\inc\\V6RenderForm.h"
 namespace VoltaEngine{
-	int RenderForm::Create(HINSTANCE hInstance, HWND& hw){
+	int RenderForm::Create(HINSTANCE hInstance, HWND& hw, int width, int height, bool window){
+		RECT rc = { 0, 0, width, height };
+		if(window) AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
+
+		Window = window;
+
 		WNDCLASSEX wndClass = { 0 };
 		wndClass.cbSize = sizeof(WNDCLASSEX);
 		wndClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -13,21 +18,26 @@ namespace VoltaEngine{
 
 		if (!RegisterClassEx(&wndClass))
 			return -1;
-
-		hw = CreateWindowA(V6GAMETITLE, V6GAMETITLE, V6WS_WINDOW,
-			CW_USEDEFAULT, CW_USEDEFAULT, V6WINDOWWIDTH, V6WINDOWHEIGHT,
+		long long flag = window ? V6WS_WINDOW : V6WS_FULLSCREEN;
+		hw = CreateWindowA(V6GAMETITLE, V6GAMETITLE, flag,
+			CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top,
 			NULL, NULL, hInstance, NULL);
 
 		if (!hw)
 			return -1;
 
-		if (!VoltaEngine::Init(hInstance, hw))
+		if (!VoltaEngine::Init(hInstance, hw, width, height, window))
 			return -1;
 
 		return 0;
 	}
 	int RenderForm::TakeOver(HWND hw){
-		ShowWindow(hw, V6SW_WINDOW);
+		if (Window){
+			ShowWindow(hw, V6SW_WINDOW);
+		}
+		else{
+			ShowWindow(hw, V6SW_FULLSCREEN);
+		}
 
 		MSG msg = { 0 };
 
@@ -44,6 +54,7 @@ namespace VoltaEngine{
 		}
 
 		VoltaRenderEngine::Dispose();
+		VoltaLogicEngine::Dispose();
 
 		return static_cast<int>(msg.wParam);
 	}
@@ -68,4 +79,5 @@ namespace VoltaEngine{
 
 		return 0;
 	}
+	bool RenderForm::Window;
 }

@@ -19,78 +19,77 @@ namespace VoltaEngine{
 	class Sprite{
 		friend class VoltaRenderEngine;
 	public:
-		Sprite() : ShouldResetVertex(false){}
+		Sprite(float p) : Priority(p){}
 		virtual void Render() = 0;
 	protected:
-		virtual void ResetVertex() = 0;
+		virtual XMMATRIX Transform() = 0;
 
-		bool ShouldResetVertex;
+		float Priority;
 	};
 
 	class RectSprite : public Sprite{
 		friend class VoltaRenderEngine;
 	public:
 		// 隐含内联。
-		RectSprite(int x, int y, int w, int h, float p = 0.5f) : Sprite(), X(x), Y(y), Width(w), Height(h), Priority(p),
-			Angle(0.0f){
-			Init();
-		}
-		~RectSprite(){
-			inputLayout->Release(); 
-			inputLayout = 0;
-			vertexBuffer->Release();
-			vertexBuffer = 0;
-		}
+		RectSprite(float x, float y, float ws = 1.0f, float hs = 1.0f, float p = 0.5f, string psname = "TexSampler", string ss = "BORDER");
+		~RectSprite(){ RelatedPS = nullptr; SamplerState = nullptr; }
 		virtual void Render() = 0;
-		inline void SetX(int x){ X = x; ShouldResetVertex = true; }
-		inline void SetY(int x){ Y = x; ShouldResetVertex = true; }
-		inline void SetZ(float x){ Priority = x; ShouldResetVertex = true; }
-		inline void SetWidth(int x){ Width = x; ShouldResetVertex = true; }
-		inline void SetHeight(int x){ Height = x; ShouldResetVertex = true; }
-		inline void SetSize(int w, int h){ Width = w; Height = h; ShouldResetVertex = true; }
-		inline void SetPosition(int x, int y){ X = x; Y = y; ShouldResetVertex = true; }
-		inline void SetMargin(int x, int y, int w, int h){ X = x; Y = y; Width = w; Height = h; ShouldResetVertex = true; }
-		inline void SetAngle(float x){ Angle = x; ShouldResetVertex = true;}
 
-		// 效率起见没有进行封装。直接修改时顶点缓存并没有更新，请使用SetXXX方法。
-		int X;
-		// 效率起见没有进行封装。直接修改时顶点缓存并没有更新，请使用SetXXX方法。
-		int Y;
-		// 效率起见没有进行封装。直接修改时顶点缓存并没有更新，请使用SetXXX方法。
-		int Width;
-		// 效率起见没有进行封装。直接修改时顶点缓存并没有更新，请使用SetXXX方法。
-		int Height;
-		// 效率起见没有进行封装。直接修改时顶点缓存并没有更新，请使用SetXXX方法。
-		float Priority;
-		// 效率起见没有进行封装。直接修改时顶点缓存并没有更新，请使用SetXXX方法。
+		XMFLOAT2 Position;
+		float TexWidth;
+		float TexHeight;
+		XMFLOAT2 Scale;
 		float Angle;
+		bool Highlight;
 	protected:
-		void ResetVertex();
-		// 添加默认顶点。在构造函数中会被自动调用。
-		void Init();
+		XMMATRIX Transform();
 
-		ID3D11InputLayout* inputLayout;
-		ID3D11Buffer* vertexBuffer;
-		UVVertex Vertexs;
+		ID3D11PixelShader* RelatedPS;
+		ID3D11SamplerState* SamplerState;
 	};
 	class TexSprite : public RectSprite{
 		friend class VoltaRenderEngine;
 	public:
-		TexSprite(string TextureName, int x, int y, int w, int h, float p = 0.5f);
-		~TexSprite(){ ColorMap = 0; }
+		TexSprite(string TextureName, float x, float y, float ws = 1.0f, float hs = 1.0f, float p = 0.5f, string psname = "TexSampler", string ss = "BORDER");
+		~TexSprite(){ ColorMap = nullptr; }
 		void Render();
 
-	protected:
-
 		ID3D11ShaderResourceView* ColorMap;
+	protected:
+		ID3D11Buffer* ModelVertexBuffer;
+	};
+	class BatchTexSprite : Sprite{
+	public:
 
+		void Render();
+	protected:
+		ID3D11ShaderResourceView* ColorMap;
+		ID3D11Buffer* ModelVertexBuffer;
 	};
 	class ShaderSprite : public Sprite{
 		friend class VoltaRenderEngine;
 	public:
+		ShaderSprite(string psname, float x, float y, float w, float h, float p = 0.5f, string ss = "BORDER");
+		~ShaderSprite(){
+			RelatedPS = nullptr;
+			VertexBuffer->Release();
+			VertexBuffer = nullptr;
+			SamplerState = nullptr;
+		}
 		void Render();
 	protected:
-		void ResetVertex();
+		XMMATRIX Transform();
+
+		ID3D11PixelShader* RelatedPS;
+		// 中心位于原地处时，该Shader的边界的顶点缓存。
+		ID3D11Buffer* VertexBuffer;
+		ID3D11SamplerState* SamplerState;
+
+		XMFLOAT2 Position;
+		float TexWidth;
+		float TexHeight;
+		float Angle;
+		bool Highlight;
 	};
 	class Control : public RectSprite{
 

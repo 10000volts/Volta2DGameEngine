@@ -11,3 +11,6 @@
 #define V6COLOR			XMFLOAT4
 #define PAIRVS          pair<string, ID3D11VertexShader*>
 #define PAIRPS          pair<string, ID3D11PixelShader*>
+
+#define V6PI			3.1415927
+#define V6HALFPI		1.5707963
