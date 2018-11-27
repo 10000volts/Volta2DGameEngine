@@ -1,12 +1,14 @@
 #include "..\\inc\\V6LogicEngine.h"
 #include "..\\inc\\V6UtilityFuncLib.h"
 #include "..\\inc\\V6RenderEngine.h"
+
 namespace VoltaEngine{
 	void LogicManager::Update(int t){
-		for_each(Steps.begin(), Steps.end(), [&](LogicStep* step){
+		for_each(Steps.begin(), Steps.end(), [&t, this](LogicStep* step){
 			step->Update(t, &Sprites, this);
 		});
-		for_each(Sprites.begin(), Sprites.end(), [&](LogicSprite* s){
+		for_each(Sprites.begin(), Sprites.end(), [&t, this](LogicSprite* s){
+			s->Update(t);
 			s->Sync();
 		});
 	}
@@ -18,9 +20,9 @@ namespace VoltaEngine{
 	void VoltaLogicEngine::Update(int t){
 		Manager.Update(t);
 		g_time += t;
-		//VoltaRenderEngine::CBufferContent.g_time = XMFLOAT4(g_time, 0.0f, 0.0f, 0.0f);
+		VoltaRenderEngine::CBPerFContent_.g_time = XMFLOAT4(static_cast<float>(g_time), 0.0f, 0.0f, 0.0f);
 	}
 
 	LogicManager VoltaLogicEngine::Manager; 
-	int VoltaLogicEngine::g_time;
+	long long VoltaLogicEngine::g_time;
 }

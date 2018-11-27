@@ -3,51 +3,55 @@
 
 namespace VoltaEngine{
 
-	RectSprite::RectSprite(float x, float y, float ws, float hs, float p, string psname, string ss) : Sprite(p), Position(x, y), Scale(ws, hs),
-		Angle(0.0f), Highlight(false), RelatedPS(PSLib[psname]), SamplerState(SSLib[ss]){}
+	Animation::Animation(string psname) : relatedPS_(PS_lib_[psname]), last_time_(1000){}
+	Animation::Animation(string psname, int lt) : relatedPS_(PS_lib_[psname]), last_time_(lt){}
+
+	RectSprite::RectSprite(float x, float y, string psname, string ss, float ws, float hs, float p) : Sprite(PS_lib_[psname], p, x, y), scale_(ws, hs),
+		angle_(0.0f), highlight_(false), m_sampler_state_(SS_lib_[ss]){}
 	XMMATRIX RectSprite::Transform(){
-		XMMATRIX scale = XMMatrixScaling(Scale.x, Scale.y, 1.0f);
-		XMMATRIX rotationZ = XMMatrixRotationZ(Angle);
-		XMMATRIX translation = XMMatrixTranslation(Position.x, Position.y, 0.0f);
+		XMMATRIX scale = XMMatrixScaling(scale_.x, scale_.y, 1.0f);
+		XMMATRIX rotationZ = XMMatrixRotationZ(angle_);
+		XMMATRIX translation = XMMatrixTranslation(position_.x, position_.y, 0.0f);
 
 		return scale * rotationZ * translation;
 	}
 
-	TexSprite::TexSprite(string TextureName, float x, float y, float w, float h, float p, string psname, string ss) : RectSprite(x, y, w, h, p, psname, ss){
-		ColorMap = TLib[TextureName];
-		ModelVertexBuffer = TVBLib[ColorMap];
-		TexWidth = TSLib[ColorMap].x;
-		TexHeight = TSLib[ColorMap].y;
+	TexSprite::TexSprite(string TextureName, float x, float y, string psname, string ss, float w, float h, float p) : RectSprite(x, y, psname, ss, w, h, p){
+		color_map_ = T_lib_[TextureName];
+		m_model_vertex_buffer_ = TVB_lib_[color_map_];
+		tex_width_ = TS_lib_[color_map_].x;
+		tex_height_ = TS_lib_[color_map_].y;
 	}
 	void TexSprite::Render(){
 		unsigned int stride = sizeof(UVVertex);
 		unsigned int offset = 0;
 
-		VoltaRenderEngine::SetHighlight(Highlight);
+		VoltaRenderEngine::SetHighlight(highlight_);
 
-		VoltaRenderEngine::dContext->IASetInputLayout(InputLayout);
-		VoltaRenderEngine::dContext->IASetVertexBuffers(0, 1, &ModelVertexBuffer, &stride, &offset);
-		VoltaRenderEngine::dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);// D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		VoltaRenderEngine::m_d3dContext_->IASetInputLayout(input_layout_);
+		VoltaRenderEngine::m_d3dContext_->IASetVertexBuffers(0, 1, &m_model_vertex_buffer_, &stride, &offset);
+		VoltaRenderEngine::m_d3dContext_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);// D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		VoltaRenderEngine::dContext->VSSetShader(VSLib["TexSampler"], 0, 0);
-		VoltaRenderEngine::dContext->PSSetShader(RelatedPS, 0, 0);
-		VoltaRenderEngine::dContext->PSSetShaderResources(0, 1, &ColorMap);
-		VoltaRenderEngine::dContext->PSSetSamplers(0, 1, &SamplerState);
+		VoltaRenderEngine::m_d3dContext_->VSSetShader(VS_lib_["TexSampler"], 0, 0);
+		VoltaRenderEngine::m_d3dContext_->PSSetShader(relatedPS_, 0, 0);
+		VoltaRenderEngine::m_d3dContext_->PSSetShaderResources(0, 1, &color_map_);
+		VoltaRenderEngine::m_d3dContext_->PSSetSamplers(0, 1, &m_sampler_state_);
 
-		VoltaRenderEngine::CBufferContent.size = XMFLOAT4(TexWidth, TexHeight, 0, 0);
+		VoltaRenderEngine::CBPerOContent_.size = XMFLOAT4(tex_width_, tex_height_, 0, 0);
 		XMMATRIX t = Transform();
-		XMMATRIX mvp = XMMatrixMultiply(t, VoltaRenderEngine::vpMatrix);
-		VoltaRenderEngine::CBufferContent.mvp = XMMatrixTranspose(mvp);
+		XMMATRIX mvp = XMMatrixMultiply(t, VoltaRenderEngine::m_vpMatrix_);
+		VoltaRenderEngine::CBPerOContent_.mvp = XMMatrixTranspose(mvp);
+		if (animating_) VoltaRenderEngine::CBPerOContent_.progress = XMFLOAT4(float(time_) / last_time_, 0.0f, 0.0f, 0.0f);
 
-		VoltaRenderEngine::dContext->UpdateSubresource(VoltaRenderEngine::ShaderCBuffer, 0, 0, &VoltaRenderEngine::CBufferContent, 0, 0);
+		VoltaRenderEngine::m_d3dContext_->UpdateSubresource(VoltaRenderEngine::m_ShaderCBPerO_, 0, 0, &VoltaRenderEngine::CBPerOContent_, 0, 0);
 
-		VoltaRenderEngine::dContext->Draw(4, 0);
+		VoltaRenderEngine::m_d3dContext_->Draw(4, 0);
 	}
 
-	ShaderSprite::ShaderSprite(string psname, float x, float y, float w, float h, float p, string ss) : Sprite(p), RelatedPS(PSLib[psname]), SamplerState(SSLib[ss]),
-		Position(x, y), TexWidth(w), TexHeight(h){
-		float halfWidth = TexWidth / 2.0f;
-		float halfHeight = TexHeight / 2.0f;
+	ShaderSprite::ShaderSprite(string psname, float x, float y, float w, float h, float p, string ss) : Sprite(PS_lib_[psname], p, x, y),
+		m_sampler_state_(SS_lib_[ss]), tex_width_(w), tex_height_(h){
+		float halfWidth = tex_width_ / 2.0f;
+		float halfHeight = tex_height_ / 2.0f;
 		UVVertex vertices[] =
 		{
 			{ XMFLOAT3(halfWidth, halfHeight, 0.5f), XMFLOAT2(1.0f, 0.0f) },
@@ -66,36 +70,39 @@ namespace VoltaEngine{
 		ZeroMemory(&resourceData, sizeof(resourceData));
 		resourceData.pSysMem = vertices;
 
-		VoltaRenderEngine::dDevice->CreateBuffer(&vertexDesc, &resourceData, &VertexBuffer);
+		VoltaRenderEngine::m_d3dDevice_->CreateBuffer(&vertexDesc, &resourceData, &m_vertex_buffer_);
 	}
 	XMMATRIX ShaderSprite::Transform(){
-		XMMATRIX rotationZ = XMMatrixRotationZ(Angle);
-		XMMATRIX translation = XMMatrixTranslation(Position.x, Position.y, 0.0f);
+		XMMATRIX rotationZ = XMMatrixRotationZ(angle_);
+		XMMATRIX translation = XMMatrixTranslation(position_.x, position_.y, 0.0f);
 
 		return rotationZ * translation;
 	}
 	void ShaderSprite::Render(){
-		unsigned int stride = sizeof(UVVertex);
-		unsigned int offset = 0;
+		if (relatedPS_ != nullptr){
+			unsigned int stride = sizeof(UVVertex);
+			unsigned int offset = 0;
 
-		VoltaRenderEngine::SetHighlight(Highlight);
+			VoltaRenderEngine::SetHighlight(highlight_);
 
-		VoltaRenderEngine::dContext->IASetInputLayout(InputLayout);
-		VoltaRenderEngine::dContext->IASetVertexBuffers(0, 1, &VertexBuffer, &stride, &offset);
-		VoltaRenderEngine::dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+			VoltaRenderEngine::m_d3dContext_->IASetInputLayout(input_layout_);
+			VoltaRenderEngine::m_d3dContext_->IASetVertexBuffers(0, 1, &m_vertex_buffer_, &stride, &offset);
+			VoltaRenderEngine::m_d3dContext_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-		VoltaRenderEngine::dContext->VSSetShader(VSLib["TexSampler"], 0, 0);
-		VoltaRenderEngine::dContext->PSSetShader(RelatedPS, 0, 0);
-		VoltaRenderEngine::dContext->PSSetShaderResources(0, 1, &VoltaRenderEngine::ScreenTexture);
-		VoltaRenderEngine::dContext->PSSetSamplers(0, 1, &SamplerState);
+			VoltaRenderEngine::m_d3dContext_->VSSetShader(VS_lib_["TexSampler"], 0, 0);
+			VoltaRenderEngine::m_d3dContext_->PSSetShader(relatedPS_, 0, 0);
+			VoltaRenderEngine::m_d3dContext_->PSSetShaderResources(0, 1, &VoltaRenderEngine::m_ScreenTexture_);
+			VoltaRenderEngine::m_d3dContext_->PSSetSamplers(0, 1, &m_sampler_state_);
 
-		VoltaRenderEngine::CBufferContent.size = XMFLOAT4(TexWidth, TexHeight, 0, 0);
-		XMMATRIX t = Transform();
-		XMMATRIX mvp = XMMatrixMultiply(t, VoltaRenderEngine::vpMatrix);
-		VoltaRenderEngine::CBufferContent.mvp = XMMatrixTranspose(mvp);
+			VoltaRenderEngine::CBPerOContent_.size = XMFLOAT4(tex_width_, tex_height_, 0, 0);
+			XMMATRIX t = Transform();
+			XMMATRIX mvp = XMMatrixMultiply(t, VoltaRenderEngine::m_vpMatrix_);
+			VoltaRenderEngine::CBPerOContent_.mvp = XMMatrixTranspose(mvp);
+			if (animating_) VoltaRenderEngine::CBPerOContent_.progress = XMFLOAT4(float(time_) / last_time_, 0.0f, 0.0f, 0.0f);
 
-		VoltaRenderEngine::dContext->UpdateSubresource(VoltaRenderEngine::ShaderCBuffer, 0, 0, &VoltaRenderEngine::CBufferContent, 0, 0);
+			VoltaRenderEngine::m_d3dContext_->UpdateSubresource(VoltaRenderEngine::m_ShaderCBPerO_, 0, 0, &VoltaRenderEngine::CBPerOContent_, 0, 0);
 
-		VoltaRenderEngine::dContext->Draw(4, 0);
+			VoltaRenderEngine::m_d3dContext_->Draw(4, 0);
+		}
 	}
 }

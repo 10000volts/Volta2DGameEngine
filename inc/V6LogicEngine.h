@@ -26,6 +26,6 @@ namespace VoltaEngine{
 		// 其实应该作封装。
 		static LogicManager Manager;
 		// 全局时间。
-		static int g_time;
+		static long long g_time;
 	};
 }

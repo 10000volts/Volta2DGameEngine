@@ -1,4 +1,6 @@
+#include <Windows.h>
 #include "..\\inc\\V6RenderForm.h"
+
 namespace VoltaEngine{
 	int RenderForm::Create(HINSTANCE hInstance, HWND& hw, int width, int height, bool window){
 		RECT rc = { 0, 0, width, height };
@@ -49,8 +51,16 @@ namespace VoltaEngine{
 				DispatchMessage(&msg);
 			}
 
-			VoltaLogicEngine::Update(0);
+			timeBeginPeriod(1);
+			static DWORD fPreTime = (timeGetTime());
+			DWORD fCurrentTime = (timeGetTime());
+			int fElapsedTime = static_cast<int>(fCurrentTime - fPreTime);
+			timeEndPeriod(1);
+
+			VoltaLogicEngine::Update(fElapsedTime);
 			VoltaRenderEngine::Render();
+
+			fPreTime = fCurrentTime;
 		}
 
 		VoltaRenderEngine::Dispose();

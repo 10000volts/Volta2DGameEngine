@@ -9,8 +9,8 @@ namespace VoltaEngine{
 		return true;
 	}
 	bool VoltaRenderEngine::InitDeviceAndSwapChain(HWND hwnd, float width, float height, bool window){
-		RenderWidth = width;
-		RenderHeight = height;
+		render_width_ = width;
+		render_height_ = height;
 
 		D3D_DRIVER_TYPE driverTypes[] =
 		{
@@ -56,12 +56,12 @@ namespace VoltaEngine{
 		{
 			result = D3D11CreateDeviceAndSwapChain(0, driverTypes[driver], 0, creationFlags,
 				featureLevels, totalFeatureLevels,
-				D3D11_SDK_VERSION, &swapChainDesc, &SwapChain,
-				&dDevice, &FeatureLevel, &dContext);
+				D3D11_SDK_VERSION, &swapChainDesc, &m_swapchain_,
+				&m_d3dDevice_, &m_feature_level_, &m_d3dContext_);
 
 			if (SUCCEEDED(result))
 			{
-				DriverType = driverTypes[driver];
+				m_driver_type_ = driverTypes[driver];
 				break;
 			}
 		}
@@ -78,7 +78,7 @@ namespace VoltaEngine{
 		HRESULT result;
 		// 创建交换链后缓冲区。
 		ID3D11Texture2D* BackBufferTexture;
-		result = SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&BackBufferTexture);
+		result = m_swapchain_->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&BackBufferTexture);
 
 		if (FAILED(result))
 		{
@@ -86,7 +86,7 @@ namespace VoltaEngine{
 			return false;
 		}
 
-		result = dDevice->CreateRenderTargetView(BackBufferTexture, 0, &BackBufferRTV);
+		result = m_d3dDevice_->CreateRenderTargetView(BackBufferTexture, 0, &m_backbufferRTV_);
 
 		if (FAILED(result))
 		{
@@ -112,28 +112,28 @@ namespace VoltaEngine{
 		textureDesc.MiscFlags = 0;
 
 		ID3D11Texture2D* TempTexture;
-		dDevice->CreateTexture2D(&textureDesc, NULL, &TempTexture);
+		m_d3dDevice_->CreateTexture2D(&textureDesc, NULL, &TempTexture);
 		D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
 		renderTargetViewDesc.Format = textureDesc.Format;
 		renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 		renderTargetViewDesc.Texture2D.MipSlice = 0;
-		dDevice->CreateRenderTargetView(TempTexture, &renderTargetViewDesc, &TempBufferRTV1);
+		m_d3dDevice_->CreateRenderTargetView(TempTexture, &renderTargetViewDesc, &m_tempbufferRTV1_);
 		D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
 		shaderResourceViewDesc.Format = textureDesc.Format;
 		shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
 		shaderResourceViewDesc.Texture2D.MipLevels = 1;
-		dDevice->CreateShaderResourceView(TempTexture, &shaderResourceViewDesc, &TempBufferSRV1);
+		m_d3dDevice_->CreateShaderResourceView(TempTexture, &shaderResourceViewDesc, &m_tempbufferSRV1_);
 		TempTexture->Release();
 
 		ID3D11Texture2D* TempTexture2;
-		dDevice->CreateTexture2D(&textureDesc, NULL, &TempTexture2);
-		dDevice->CreateRenderTargetView(TempTexture2, &renderTargetViewDesc, &TempBufferRTV2);
-		dDevice->CreateShaderResourceView(TempTexture2, &shaderResourceViewDesc, &TempBufferSRV2);
+		m_d3dDevice_->CreateTexture2D(&textureDesc, NULL, &TempTexture2);
+		m_d3dDevice_->CreateRenderTargetView(TempTexture2, &renderTargetViewDesc, &m_tempbufferRTV2_);
+		m_d3dDevice_->CreateShaderResourceView(TempTexture2, &shaderResourceViewDesc, &m_tempbufferSRV2_);
 		TempTexture2->Release();
 
 		// 设置初始渲染环境。
-		OppoRTV = TempBufferRTV2;
+		m_oppoRTV_ = m_tempbufferRTV2_;
 
 		// 创建屏幕顶点缓存。
 		float halfWidth = width;
@@ -156,7 +156,7 @@ namespace VoltaEngine{
 		ZeroMemory(&resourceData, sizeof(resourceData));
 		resourceData.pSysMem = vertices;
 
-		VoltaRenderEngine::dDevice->CreateBuffer(&vertexDesc, &resourceData, &ScreenVB);
+		VoltaRenderEngine::m_d3dDevice_->CreateBuffer(&vertexDesc, &resourceData, &m_screenVB_);
 
 		// 设置视口。
 		D3D11_VIEWPORT viewport;
@@ -167,35 +167,51 @@ namespace VoltaEngine{
 		viewport.TopLeftX = 0.0f;
 		viewport.TopLeftY = 0.0f;
 
-		dContext->RSSetViewports(1, &viewport);
+		m_d3dContext_->RSSetViewports(1, &viewport);
 
-		// 初始化CBuffer和CBufferContent。
+		// 初始化CBuffer和m_CBContent_。
 		D3D11_BUFFER_DESC constDesc;
 		ZeroMemory(&constDesc, sizeof(constDesc));
 		constDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		constDesc.ByteWidth = sizeof(CBufferPreO);
+		constDesc.ByteWidth = sizeof(CBufferPerO);
 		constDesc.Usage = D3D11_USAGE_DEFAULT;
 
-		dDevice->CreateBuffer(&constDesc, nullptr, &ShaderCBuffer);
+		m_d3dDevice_->CreateBuffer(&constDesc, nullptr, &m_ShaderCBPerO_);
 
-		//CBufferContent.g_time = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-		ZeroMemory(&CBufferContent.mvp, sizeof(CBufferContent.mvp));
+		ZeroMemory(&CBPerOContent_, sizeof(CBPerOContent_));
 
-		dContext->VSSetConstantBuffers(0, 1, &VoltaRenderEngine::ShaderCBuffer);
-		dContext->PSSetConstantBuffers(0, 1, &VoltaRenderEngine::ShaderCBuffer);
+		m_d3dContext_->VSSetConstantBuffers(0, 1, &VoltaRenderEngine::m_ShaderCBPerO_);
+		m_d3dContext_->PSSetConstantBuffers(0, 1, &VoltaRenderEngine::m_ShaderCBPerO_);
+
+		// PerF
+
+		m_d3dDevice_->CreateBuffer(&constDesc, nullptr, &m_ShaderCBPerF_);
+
+		ZeroMemory(&CBPerFContent_, sizeof(CBPerFContent_));
+
+		m_d3dContext_->VSSetConstantBuffers(1, 1, &VoltaRenderEngine::m_ShaderCBPerF_);
+		m_d3dContext_->PSSetConstantBuffers(1, 1, &VoltaRenderEngine::m_ShaderCBPerF_);
+
+		// L
+		m_d3dDevice_->CreateBuffer(&constDesc, nullptr, &m_ShaderCBL_);
+
+		ZeroMemory(&CBLContent_, sizeof(CBLContent_));
+
+		m_d3dContext_->VSSetConstantBuffers(2, 1, &VoltaRenderEngine::m_ShaderCBL_); 
+		m_d3dContext_->PSSetConstantBuffers(2, 1, &VoltaRenderEngine::m_ShaderCBL_);
 
 		// 设置世界坐标系。
 		XMMATRIX view = XMMatrixIdentity();
 		XMMATRIX projection = XMMatrixOrthographicOffCenterLH(0.0f, width, 0.0f, height, 0.0f, 1.0f);
-		vpMatrix = XMMatrixMultiply(view, projection);
+		m_vpMatrix_ = XMMatrixMultiply(view, projection);
 
 		// 设置色彩混合模式。
 		ChangeHighlightState();
 	}
 	void VoltaEngine::InitLib(){
-		AddShaderResourceFromFile("Simple", "Basic.fx");
-		AddShaderResourceFromFile("Blur", "Blur2.fx");
-		AddShaderResourceFromFile("Test", "test.fx");
+		AddShaderResourceFromFile("Blur", "Blur.fx");
+		AddShaderResourceFromFile("BlurDy", "BlurDy.fx");
+		AddShaderResourceFromFile("FadeOut", "FadeOut.fx");
 
 		// 添加用于读取纹理的着色器和输入布局。
 		ID3D11VertexShader* vsdefau;
@@ -210,14 +226,14 @@ namespace VoltaEngine{
 		};
 		unsigned int totalLayoutElements = ARRAYSIZE(solidColorLayout);
 		VoltaRenderEngine::CreateInputLayout(solidColorLayout, totalLayoutElements,
-			InputLayoutVSBuffer, &InputLayout);
+			InputLayoutVSBuffer, &input_layout_);
 		ID3DBlob* psBuffer = nullptr;
 		VoltaEngine::CompileShaderFromFile("TexBasic.fx", "PS_Main", "ps_4_0", &psBuffer);
 		VoltaRenderEngine::CreatePS(psBuffer, &psdefau);
 		InputLayoutVSBuffer->Release();
 
-		VSLib.insert(PAIRVS("TexSampler", vsdefau));
-		PSLib.insert(PAIRPS("TexSampler", psdefau));
+		VS_lib_.insert(PAIRVS("TexSampler", vsdefau));
+		PS_lib_.insert(PAIRPS("TexSampler", psdefau));
 		psBuffer->Release();
 		AddTextureFromFile("image1", "image1.dds");
 		AddTextureFromFile("net", "net.dds");
@@ -227,7 +243,7 @@ namespace VoltaEngine{
 		vertexDesc->Usage = D3D11_USAGE_DEFAULT;
 		vertexDesc->BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		vertexDesc->ByteWidth = sizeof(UVVertex)* 4;
-		BDescLib.insert(pair<string, D3D11_BUFFER_DESC*>("UVVBD", vertexDesc));
+		BDesc_lib_.insert(pair<string, D3D11_BUFFER_DESC*>("UVVBD", vertexDesc));
 
 		D3D11_SAMPLER_DESC* colorMapDesc = new D3D11_SAMPLER_DESC();
 		ID3D11SamplerState* colorMapSampler;
@@ -238,11 +254,11 @@ namespace VoltaEngine{
 		colorMapDesc->ComparisonFunc = D3D11_COMPARISON_NEVER;
 		colorMapDesc->Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 		colorMapDesc->MaxLOD = D3D11_FLOAT32_MAX;
-		MapInsert(&SDescLib, static_cast<string>("BORDER"), colorMapDesc);
+		MapInsert(&SDesc_lib_, static_cast<string>("BORDER"), colorMapDesc);
 
-		VoltaRenderEngine::dDevice->CreateSamplerState(SDescLib["BORDER"],
+		VoltaRenderEngine::m_d3dDevice_->CreateSamplerState(SDesc_lib_["BORDER"],
 			&colorMapSampler);
-		MapInsert(&SSLib, static_cast<string>("BORDER"), colorMapSampler);
+		MapInsert(&SS_lib_, static_cast<string>("BORDER"), colorMapSampler);
 
 		colorMapDesc = new D3D11_SAMPLER_DESC();
 		ZeroMemory(colorMapDesc, sizeof(colorMapDesc));
@@ -252,11 +268,11 @@ namespace VoltaEngine{
 		colorMapDesc->ComparisonFunc = D3D11_COMPARISON_NEVER;
 		colorMapDesc->Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 		colorMapDesc->MaxLOD = D3D11_FLOAT32_MAX;
-		MapInsert(&SDescLib, static_cast<string>("CLAMP"), colorMapDesc);
+		MapInsert(&SDesc_lib_, static_cast<string>("CLAMP"), colorMapDesc);
 
-		VoltaRenderEngine::dDevice->CreateSamplerState(SDescLib["CLAMP"],
+		VoltaRenderEngine::m_d3dDevice_->CreateSamplerState(SDesc_lib_["CLAMP"],
 			&colorMapSampler);
-		MapInsert(&SSLib, static_cast<string>("CLAMP"), colorMapSampler);
+		MapInsert(&SS_lib_, static_cast<string>("CLAMP"), colorMapSampler);
 	}
 	// ShaderName:Shader的名称，不应包括扩展名。
 	void VoltaEngine::AddShaderResourceFromFile(string ShaderName, LPCSTR file){
@@ -269,8 +285,8 @@ namespace VoltaEngine{
 		ID3DBlob* psBuffer = nullptr;
 		VoltaEngine::CompileShaderFromFile(file, "PS_Main", "ps_4_0", &psBuffer);
 		VoltaRenderEngine::CreatePS(psBuffer, &psdefau);
-		VSLib.insert(PAIRVS(ShaderName, vsdefau));
-		PSLib.insert(PAIRPS(ShaderName, psdefau));
+		VS_lib_.insert(PAIRVS(ShaderName, vsdefau));
+		PS_lib_.insert(PAIRPS(ShaderName, psdefau));
 		vsBuffer->Release();
 		psBuffer->Release();
 	}
@@ -284,17 +300,17 @@ namespace VoltaEngine{
 		ID3DBlob* psBuffer = nullptr;
 		VoltaEngine::CompileShader(ShaderName, "PS_Main", "ps_4_0", &psBuffer);
 		VoltaRenderEngine::CreatePS(psBuffer, &psdefau);
-		VSLib.insert(PAIRVS(ShaderName, vsdefau));
-		PSLib.insert(PAIRPS(ShaderName, psdefau));
+		VS_lib_.insert(PAIRVS(ShaderName, vsdefau));
+		PS_lib_.insert(PAIRPS(ShaderName, psdefau));
 		vsBuffer->Release();
 		psBuffer->Release();
 	}
 	void VoltaEngine::AddTextureFromFile(string TextureName, LPCSTR file){
 		// 添加纹理的拷贝至库。
 		ID3D11ShaderResourceView* colorMap;
-		D3DX11CreateShaderResourceViewFromFile(VoltaRenderEngine::dDevice,
+		D3DX11CreateShaderResourceViewFromFile(VoltaRenderEngine::m_d3dDevice_,
 			file, 0, 0, &colorMap, 0);
-		MapInsert(&TLib, TextureName, colorMap);
+		MapInsert(&T_lib_, TextureName, colorMap);
 		// 创建模型空间对应的顶点缓存并将其拷贝、添加至库。
 		ID3D11Resource* colorTex;
 		colorMap->GetResource(&colorTex);
@@ -303,7 +319,7 @@ namespace VoltaEngine{
 		colorTex->Release();
 
 		XMFLOAT2 size((float)colorTexDesc.Width, (float)colorTexDesc.Height);
-		MapInsert(&TSLib, colorMap, size);
+		MapInsert(&TS_lib_, colorMap, size);
 
 		float halfWidth = size.x / 2.0f;
 		float halfHeight = size.y / 2.0f;
@@ -326,85 +342,88 @@ namespace VoltaEngine{
 		resourceData.pSysMem = vertices;
 
 		ID3D11Buffer* vertexBuffer;
-		VoltaRenderEngine::dDevice->CreateBuffer(&vertexDesc, &resourceData, &vertexBuffer);
-		MapInsert(&TVBLib, colorMap, vertexBuffer);
+		VoltaRenderEngine::m_d3dDevice_->CreateBuffer(&vertexDesc, &resourceData, &vertexBuffer);
+		MapInsert(&TVB_lib_, colorMap, vertexBuffer);
 	}
 
 	void VoltaRenderEngine::Dispose(){
-		if (ScreenVB) ScreenVB->Release();
-		if (TempBufferRTV1) TempBufferRTV1->Release();
-		if (TempBufferSRV1) TempBufferSRV1->Release();
-		if (TempBufferRTV2) TempBufferRTV2->Release();
-		if (TempBufferSRV2) TempBufferSRV2->Release();
-		if (BackBufferRTV) BackBufferRTV->Release();
-		if (SwapChain) SwapChain->Release();
-		if (dContext) dContext->Release();
-		if (dDevice) dDevice->Release();
-		if (ShaderCBuffer) ShaderCBuffer->Release();
-		if (AlphaBlendState) AlphaBlendState->Release();
+		if (m_screenVB_) m_screenVB_->Release();
+		if (m_tempbufferRTV1_) m_tempbufferRTV1_->Release();
+		if (m_tempbufferSRV1_) m_tempbufferSRV1_->Release();
+		if (m_tempbufferRTV2_) m_tempbufferRTV2_->Release();
+		if (m_tempbufferSRV2_) m_tempbufferSRV2_->Release();
+		if (m_backbufferRTV_) m_backbufferRTV_->Release();
+		if (m_swapchain_) m_swapchain_->Release();
+		if (m_d3dContext_) m_d3dContext_->Release();
+		if (m_d3dDevice_) m_d3dDevice_->Release();
+		if (m_ShaderCBPerO_) m_ShaderCBPerO_->Release();
+		if (m_ShaderCBPerF_) m_ShaderCBPerF_->Release();
+		if (m_ShaderCBL_) m_ShaderCBL_->Release();
+		if (m_alpha_blend_state_) m_alpha_blend_state_->Release();
 		Manager.Clear();
-		ScreenVB = nullptr;
-		TempBufferSRV1 = nullptr;
-		TempBufferRTV1 = nullptr;
-		TempBufferSRV2 = nullptr;
-		TempBufferRTV2 = nullptr;
-		ScreenTexture = nullptr;
-		// TargetSRV = nullptr;
-		OppoRTV = nullptr;
-		BackBufferRTV = nullptr;
-		SwapChain = nullptr;
-		dContext = nullptr;
-		dDevice = nullptr;
-		ShaderCBuffer = nullptr;
-		AlphaBlendState = nullptr;
+		m_screenVB_ = nullptr;
+		m_tempbufferSRV1_ = nullptr;
+		m_tempbufferRTV1_ = nullptr;
+		m_tempbufferSRV2_ = nullptr;
+		m_tempbufferRTV2_ = nullptr;
+		m_ScreenTexture_ = nullptr;
+		m_oppoRTV_ = nullptr;
+		m_backbufferRTV_ = nullptr;
+		m_swapchain_ = nullptr;
+		m_d3dContext_ = nullptr;
+		m_d3dDevice_ = nullptr;
+		m_ShaderCBPerO_ = nullptr;
+		m_ShaderCBPerF_ = nullptr;
+		m_ShaderCBL_ = nullptr;
+		m_alpha_blend_state_ = nullptr;
 	}
 
 	void VoltaRenderEngine::Render(){
-		if (!dContext)
+		if (!m_d3dContext_)
 			return;
 		float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-		//CBufferContent.g_time = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-		dContext->ClearRenderTargetView(TempBufferRTV1, clearColor);
-		dContext->ClearRenderTargetView(TempBufferRTV2, clearColor);
-		dContext->ClearRenderTargetView(BackBufferRTV, clearColor);
+		m_d3dContext_->UpdateSubresource(m_ShaderCBPerF_, 0, 0, &CBPerFContent_, 0, 0);
+
+		m_d3dContext_->ClearRenderTargetView(m_tempbufferRTV1_, clearColor);
+		m_d3dContext_->ClearRenderTargetView(m_tempbufferRTV2_, clearColor);
+		m_d3dContext_->ClearRenderTargetView(m_backbufferRTV_, clearColor);
 
 		SwapRenderTarget();
 		Manager.Render();
-		dContext->OMSetRenderTargets(1, &BackBufferRTV, 0);
+		m_d3dContext_->OMSetRenderTargets(1, &m_backbufferRTV_, 0);
 		SwapInputSRV();
 		Present();
-		SwapChain->Present(0, 0);
+		m_swapchain_->Present(0, 0);
 	}
 	void VoltaRenderEngine::Present(){
 		unsigned int stride = sizeof(UVVertex);
 		unsigned int offset = 0;
 
-		dContext->IASetInputLayout(InputLayout);
-		dContext->IASetVertexBuffers(0, 1, &ScreenVB, &stride, &offset);
-		dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);// D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_d3dContext_->IASetInputLayout(input_layout_);
+		m_d3dContext_->IASetVertexBuffers(0, 1, &m_screenVB_, &stride, &offset);
+		m_d3dContext_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);// D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		dContext->VSSetShader(VSLib["TexSampler"], 0, 0);
-		dContext->PSSetShader(PSLib["TexSampler"], 0, 0);
-		dContext->PSSetShaderResources(0, 1, &ScreenTexture);
-		dContext->PSSetSamplers(0, 1, &SSLib["BORDER"]);
+		m_d3dContext_->VSSetShader(VS_lib_["TexSampler"], 0, 0);
+		m_d3dContext_->PSSetShader(PS_lib_["TexSampler"], 0, 0);
+		m_d3dContext_->PSSetShaderResources(0, 1, &m_ScreenTexture_);
+		m_d3dContext_->PSSetSamplers(0, 1, &SS_lib_["BORDER"]);
 
-		CBufferContent.size = XMFLOAT4(RenderWidth, RenderHeight, 0.0, 0.0);
-		CBufferContent.mvp = XMMatrixTranspose(vpMatrix);
+		CBPerOContent_.size = XMFLOAT4(render_width_, render_height_, 0.0, 0.0);
+		CBPerOContent_.mvp = XMMatrixTranspose(m_vpMatrix_);
 
-		dContext->UpdateSubresource(ShaderCBuffer, 0, 0, &CBufferContent, 0, 0);
-		dContext->VSSetConstantBuffers(0, 1, &ShaderCBuffer);
+		m_d3dContext_->UpdateSubresource(m_ShaderCBPerO_, 0, 0, &CBPerOContent_, 0, 0);
 
-		dContext->Draw(4, 0);
+		m_d3dContext_->Draw(4, 0);
 	}
 	void VoltaRenderEngine::SwapRenderTarget(){
-		dContext->OMSetRenderTargets(1, &OppoRTV, 0);
-		if (OppoRTV == TempBufferRTV1){
-			OppoRTV = TempBufferRTV2;
-			ScreenTexture = TempBufferSRV2;
+		m_d3dContext_->OMSetRenderTargets(1, &m_oppoRTV_, 0);
+		if (m_oppoRTV_ == m_tempbufferRTV1_){
+			m_oppoRTV_ = m_tempbufferRTV2_;
+			m_ScreenTexture_ = m_tempbufferSRV2_;
 		}
 		else{
-			OppoRTV = TempBufferRTV1;
-			ScreenTexture = TempBufferSRV1;
+			m_oppoRTV_ = m_tempbufferRTV1_;
+			m_ScreenTexture_ = m_tempbufferSRV1_;
 		}
 	}
 	void VisualManager::Render(){
@@ -443,51 +462,51 @@ namespace VoltaEngine{
 		}
 	}
 	void VoltaEngine::DisposeRecourses(){
-		DisposeLib(&VSLib);
-		DisposeLib(&PSLib);
-		DisposeLib(&BDescLib);
-		DisposeLib(&IEDescLib);
-		DisposeLib(&TLib);
-		TSLib.clear();
-		DisposeLib(&TVBLib);
-		DisposeLib(&SDescLib);
-		DisposeLib(&SSLib);
-		InputLayout->Release();
-		InputLayout = nullptr;
+		DisposeLib(&VS_lib_);
+		DisposeLib(&PS_lib_);
+		DisposeLib(&BDesc_lib_);
+		DisposeLib(&IEDesc_lib_);
+		DisposeLib(&T_lib_);
+		TS_lib_.clear();
+		DisposeLib(&TVB_lib_);
+		DisposeLib(&SDesc_lib_);
+		DisposeLib(&SS_lib_);
+		input_layout_->Release();
+		input_layout_ = nullptr;
 	}
 
 	void VoltaRenderEngine::ChangeHighlightState(){
-		if (Highlight){
-			ZeroMemory(&BlendDesc, sizeof(BlendDesc));
-			BlendDesc.RenderTarget[0].BlendEnable = TRUE;
-			BlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-			BlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-			BlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_DEST_ALPHA;
-			BlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MAX;
-			BlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
-			BlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_DEST_ALPHA;
-			BlendDesc.RenderTarget[0].RenderTargetWriteMask = 0x0F;
+		if (highlight_){
+			ZeroMemory(&m_blend_desc_, sizeof(m_blend_desc_));
+			m_blend_desc_.RenderTarget[0].BlendEnable = TRUE;
+			m_blend_desc_.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+			m_blend_desc_.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+			m_blend_desc_.RenderTarget[0].DestBlend = D3D11_BLEND_DEST_ALPHA;
+			m_blend_desc_.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MAX;
+			m_blend_desc_.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
+			m_blend_desc_.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_DEST_ALPHA;
+			m_blend_desc_.RenderTarget[0].RenderTargetWriteMask = 0x0F;
 
 			float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-			dDevice->CreateBlendState(&BlendDesc, &AlphaBlendState);
-			dContext->OMSetBlendState(AlphaBlendState, blendFactor, 0xFFFFFFFF);
+			m_d3dDevice_->CreateBlendState(&m_blend_desc_, &m_alpha_blend_state_);
+			m_d3dContext_->OMSetBlendState(m_alpha_blend_state_, blendFactor, 0xFFFFFFFF);
 		}
 		else{
-			ZeroMemory(&BlendDesc, sizeof(BlendDesc));
-			BlendDesc.RenderTarget[0].BlendEnable = TRUE;
-			BlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-			BlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-			BlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-			BlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MAX;
-			BlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
-			BlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_DEST_ALPHA;
-			BlendDesc.RenderTarget[0].RenderTargetWriteMask = 0x0F;
+			ZeroMemory(&m_blend_desc_, sizeof(m_blend_desc_));
+			m_blend_desc_.RenderTarget[0].BlendEnable = TRUE;
+			m_blend_desc_.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+			m_blend_desc_.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+			m_blend_desc_.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+			m_blend_desc_.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MAX;
+			m_blend_desc_.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
+			m_blend_desc_.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_DEST_ALPHA;
+			m_blend_desc_.RenderTarget[0].RenderTargetWriteMask = 0x0F;
 
 			float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-			dDevice->CreateBlendState(&BlendDesc, &AlphaBlendState);
-			dContext->OMSetBlendState(AlphaBlendState, blendFactor, 0xFFFFFFFF);
+			m_d3dDevice_->CreateBlendState(&m_blend_desc_, &m_alpha_blend_state_);
+			m_d3dContext_->OMSetBlendState(m_alpha_blend_state_, blendFactor, 0xFFFFFFFF);
 		}
 	}
 	//void VoltaRenderEngine::CompileShader(LPCSTR file, LPCSTR entry, LPCSTR shaderModel, ID3DBlob** buffer){
@@ -501,48 +520,52 @@ namespace VoltaEngine{
 	//		D3DCOMPILE_ENABLE_STRICTNESS, 0, 0, buffer, 0, 0); // 倒数第二个参数是errorBuffer
 	//}
 
-	D3D_DRIVER_TYPE VoltaRenderEngine::DriverType;
-	D3D_FEATURE_LEVEL VoltaRenderEngine::FeatureLevel;
+	D3D_DRIVER_TYPE VoltaRenderEngine::m_driver_type_;
+	D3D_FEATURE_LEVEL VoltaRenderEngine::m_feature_level_;
 
-	ID3D11Device* VoltaRenderEngine::dDevice = nullptr;
-	ID3D11DeviceContext* VoltaRenderEngine::dContext = nullptr;
-	IDXGISwapChain* VoltaRenderEngine::SwapChain = nullptr;
-	ID3D11RenderTargetView* VoltaRenderEngine::OppoRTV = nullptr;
-	ID3D11RenderTargetView* VoltaRenderEngine::BackBufferRTV = nullptr;
-	ID3D11RenderTargetView* VoltaRenderEngine::TempBufferRTV1 = nullptr;
-	ID3D11ShaderResourceView* VoltaRenderEngine::TempBufferSRV1 = nullptr;
-	ID3D11RenderTargetView* VoltaRenderEngine::TempBufferRTV2 = nullptr;
-	ID3D11ShaderResourceView* VoltaRenderEngine::TempBufferSRV2 = nullptr;
-	ID3D11ShaderResourceView* VoltaRenderEngine::ScreenTexture = nullptr;
-	ID3D11Buffer* VoltaRenderEngine::ScreenVB = nullptr;
-	VoltaRenderEngine::CBufferPreO VoltaRenderEngine::CBufferContent;
-	ID3D11Buffer* VoltaRenderEngine::ShaderCBuffer = nullptr;
-	XMMATRIX VoltaRenderEngine::vpMatrix;
-	D3D11_BLEND_DESC VoltaRenderEngine::BlendDesc;
-	ID3D11BlendState* VoltaRenderEngine::AlphaBlendState = nullptr;
+	ID3D11Device* VoltaRenderEngine::m_d3dDevice_ = nullptr;
+	ID3D11DeviceContext* VoltaRenderEngine::m_d3dContext_ = nullptr;
+	IDXGISwapChain* VoltaRenderEngine::m_swapchain_ = nullptr;
+	ID3D11RenderTargetView* VoltaRenderEngine::m_oppoRTV_ = nullptr;
+	ID3D11RenderTargetView* VoltaRenderEngine::m_backbufferRTV_ = nullptr;
+	ID3D11RenderTargetView* VoltaRenderEngine::m_tempbufferRTV1_ = nullptr;
+	ID3D11ShaderResourceView* VoltaRenderEngine::m_tempbufferSRV1_ = nullptr;
+	ID3D11RenderTargetView* VoltaRenderEngine::m_tempbufferRTV2_ = nullptr;
+	ID3D11ShaderResourceView* VoltaRenderEngine::m_tempbufferSRV2_ = nullptr;
+	ID3D11ShaderResourceView* VoltaRenderEngine::m_ScreenTexture_ = nullptr;
+	ID3D11Buffer* VoltaRenderEngine::m_screenVB_ = nullptr;
+	VoltaRenderEngine::CBufferPerO VoltaRenderEngine::CBPerOContent_;
+	ID3D11Buffer* VoltaRenderEngine::m_ShaderCBPerO_ = nullptr;
+	VoltaRenderEngine::CBufferPerF VoltaRenderEngine::CBPerFContent_;
+	ID3D11Buffer* VoltaRenderEngine::m_ShaderCBPerF_ = nullptr;
+	VoltaRenderEngine::CBufferLoose VoltaRenderEngine::CBLContent_;
+	ID3D11Buffer* VoltaRenderEngine::m_ShaderCBL_ = nullptr;
+	XMMATRIX VoltaRenderEngine::m_vpMatrix_;
+	D3D11_BLEND_DESC VoltaRenderEngine::m_blend_desc_;
+	ID3D11BlendState* VoltaRenderEngine::m_alpha_blend_state_ = nullptr;
 
 	VisualManager VoltaRenderEngine::Manager;
 
-	float VoltaRenderEngine::RenderWidth;
-	float VoltaRenderEngine::RenderHeight;
+	float VoltaRenderEngine::render_width_;
+	float VoltaRenderEngine::render_height_;
 
-	bool VoltaRenderEngine::Highlight = false;
+	bool VoltaRenderEngine::highlight_ = false;
 
-	map<string, ID3D11VertexShader*> VSLib;
-	map<string, ID3D11PixelShader*> PSLib;
+	map<string, ID3D11VertexShader*> VS_lib_;
+	map<string, ID3D11PixelShader*> PS_lib_;
 	// 缓冲描述资源库。
-	map<string, D3D11_BUFFER_DESC*> BDescLib;
+	map<string, D3D11_BUFFER_DESC*> BDesc_lib_;
 	// 输入布局描述资源库。
-	map<string, D3D11_INPUT_ELEMENT_DESC*> IEDescLib;
+	map<string, D3D11_INPUT_ELEMENT_DESC*> IEDesc_lib_;
 	// 纹理描述资源库。
-	map<string, ID3D11ShaderResourceView*> TLib;
+	map<string, ID3D11ShaderResourceView*> T_lib_;
 	// 纹理对应的模型空间顶点。
-	map<ID3D11ShaderResourceView*, ID3D11Buffer*> TVBLib;
+	map<ID3D11ShaderResourceView*, ID3D11Buffer*> TVB_lib_;
 	// 纹理尺寸库。
-	map<ID3D11ShaderResourceView*, XMFLOAT2> TSLib;
+	map<ID3D11ShaderResourceView*, XMFLOAT2> TS_lib_;
 	// 采样器描述资源库。
-	map<string, D3D11_SAMPLER_DESC*> SDescLib;
+	map<string, D3D11_SAMPLER_DESC*> SDesc_lib_;
 	// 采样状态资源库。
-	map<string, ID3D11SamplerState*> SSLib;
-	ID3D11InputLayout* InputLayout = nullptr;
+	map<string, ID3D11SamplerState*> SS_lib_;
+	ID3D11InputLayout* input_layout_ = nullptr;
 }

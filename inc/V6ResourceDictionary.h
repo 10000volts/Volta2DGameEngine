@@ -38,22 +38,22 @@ namespace VoltaEngine{
 		DisposeRecourses();
 	}
 
-	extern map<string, ID3D11VertexShader*> VSLib;
-	extern map<string, ID3D11PixelShader*> PSLib;
+	extern map<string, ID3D11VertexShader*> VS_lib_;
+	extern map<string, ID3D11PixelShader*> PS_lib_;
 	// 缓冲描述资源库。
-	extern map<string, D3D11_BUFFER_DESC*> BDescLib;
+	extern map<string, D3D11_BUFFER_DESC*> BDesc_lib_;
 	// 输入布局描述资源库。
-	extern map<string, D3D11_INPUT_ELEMENT_DESC*> IEDescLib;
+	extern map<string, D3D11_INPUT_ELEMENT_DESC*> IEDesc_lib_;
 	// 纹理资源库。
-	extern map<string, ID3D11ShaderResourceView*> TLib;
+	extern map<string, ID3D11ShaderResourceView*> T_lib_;
 	// 纹理对应的模型空间顶点。
-	extern map<ID3D11ShaderResourceView*, ID3D11Buffer*> TVBLib;
+	extern map<ID3D11ShaderResourceView*, ID3D11Buffer*> TVB_lib_;
 	// 纹理尺寸库。
-	extern map<ID3D11ShaderResourceView*, XMFLOAT2> TSLib;
+	extern map<ID3D11ShaderResourceView*, XMFLOAT2> TS_lib_;
 	// 采样器描述资源库。
-	extern map<string, D3D11_SAMPLER_DESC*> SDescLib;
+	extern map<string, D3D11_SAMPLER_DESC*> SDesc_lib_;
 	// 采样状态资源库。
-	extern map<string, ID3D11SamplerState*> SSLib;
+	extern map<string, ID3D11SamplerState*> SS_lib_;
 	// 预设的输入布局。
-	extern ID3D11InputLayout* InputLayout;
+	extern ID3D11InputLayout* input_layout_;
 }

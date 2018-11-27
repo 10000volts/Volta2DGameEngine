@@ -13,13 +13,18 @@ const static float w[5][5] = { { 0.0317564, 0.0375157, 0.0336973, 0.0396589, 0.0
 
 cbuffer cbChangesPerObject : register(b0)
 {
-	float2 size;
+	float2 size_;
 	matrix mvp_;
+	float progress_;
 };
 
-cbuffer cbChangesPreFrame : register(b1){
+cbuffer cbChangesPerFrame : register(b1){
 	// global time.
 	float g_time;
+}
+
+cbuffer cbChangesLoose : register(b2){
+	
 }
 
 Texture2D colorMap_ : register(t0);
@@ -54,7 +59,7 @@ float4 blur(float2 xy){
 	{
 		for (int j = -2; j < 3; j++)
 		{
-			float2 t = {xy.x + float(i) * 4 / size.x, xy.y + float(j) / size.y};
+			float2 t = {xy.x + float(i) * 4 / size_.x, xy.y + float(j) / size_.y};
 			color += colorMap_.Sample( colorSampler_, t ) * w[i + 2][j + 2];
 		}
 	}
