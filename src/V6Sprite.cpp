@@ -2,9 +2,8 @@
 #include "..\\inc\\V6ResourceDictionary.h"
 
 namespace VoltaEngine{
-
-	Animation::Animation(string psname) : relatedPS_(PS_lib_[psname]), last_time_(1000){}
-	Animation::Animation(string psname, int lt) : relatedPS_(PS_lib_[psname]), last_time_(lt){}
+	TimeFixedAnimation::TimeFixedAnimation(Animation a, int lt) : ani(a), last_time(lt){}
+	TimeFixedAnimation::TimeFixedAnimation(string aname, int lt) : ani(AniLib[aname]), last_time(lt){}
 
 	RectSprite::RectSprite(float x, float y, string psname, string ss, float ws, float hs, float p) : Sprite(PS_lib_[psname], p, x, y), scale_(ws, hs),
 		angle_(0.0f), highlight_(false), m_sampler_state_(SS_lib_[ss]){}

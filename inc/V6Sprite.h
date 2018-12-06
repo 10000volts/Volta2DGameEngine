@@ -6,13 +6,15 @@
 #include "stdafx.h"
 
 namespace VoltaEngine{
-	struct Animation{
-		Animation(string);
-		Animation(string, int);
-		ID3D11PixelShader* relatedPS_;
-		// The lasting time for the animation.
-		int last_time_;
+	typedef ID3D11PixelShader* Animation;
+	struct TimeFixedAnimation{
+		TimeFixedAnimation() : ani(nullptr), last_time(0){}
+		TimeFixedAnimation(Animation, int);
+		TimeFixedAnimation(string, int);
+		Animation ani;
+		int last_time;
 	};
+
 	// 带有采样纹理坐标的顶点结构。用于使用纹理的图片精灵和Shader精灵。
 	struct UVVertex{
 		UVVertex() : position(0, 0, 0), uv(0, 0){}
@@ -22,16 +24,17 @@ namespace VoltaEngine{
 		XMFLOAT3 position;
 		XMFLOAT2 uv;
 	};
+	class LogicSprite;
 	class VoltaRenderEngine;
-	struct Animation;
 	class Sprite{
 		friend class VoltaRenderEngine;
+		friend class LogicSprite;
 	public:
 		Sprite(ID3D11PixelShader* rps, float p, float x, float y) : relatedPS_(rps), priority_(p), position_(x, y), animating_(false){}
 		virtual void Render() = 0;
-		inline void StartAnimation(Animation* a){
-			relatedPS_ = a->relatedPS_;
-			last_time_ = a->last_time_;
+		inline void StartAnimation(Animation a, int lt){
+			relatedPS_ = a;
+			last_time_ = lt;
 			time_ = 0;
 			animating_ = true;
 		}
@@ -40,17 +43,17 @@ namespace VoltaEngine{
 			time_ = 0;
 			animating_ = true;
 		}
+
+		XMFLOAT2 position_;
+		bool animating_;
+	protected:
+		virtual XMMATRIX Transform() = 0;
 		inline void UpdateAnimation(int t){
 			time_ += t;
 			if (time_ >= last_time_){
 				animating_ = false;
 			}
 		}
-
-		XMFLOAT2 position_;
-		bool animating_;
-	protected:
-		virtual XMMATRIX Transform() = 0;
 
 		ID3D11PixelShader* relatedPS_;
 		float priority_;
@@ -88,6 +91,7 @@ namespace VoltaEngine{
 	protected:
 		ID3D11Buffer* m_model_vertex_buffer_;
 	};
+
 	class BatchTexSprite : Sprite{
 	public:
 
@@ -96,6 +100,11 @@ namespace VoltaEngine{
 		ID3D11ShaderResourceView* color_map_;
 		ID3D11Buffer* m_model_vertex_buffer_;
 	};
+
+	class TextSprite : public Sprite{
+
+	};
+
 	class ShaderSprite : public Sprite{
 		friend class VoltaRenderEngine;
 	public:
@@ -119,14 +128,5 @@ namespace VoltaEngine{
 		float tex_width_;
 		float tex_height_;
 		float angle_;
-	};
-	class Control : public RectSprite{
-
-	};
-	class TextControl : public Control{
-
-	};
-	class ImageControl : public Control{
-
 	};
 }

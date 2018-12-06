@@ -4,12 +4,11 @@
 #include <D3DX11.h>
 #include <D3Dcompiler.h>
 #include "stdafx.h"
+
 namespace VoltaEngine{
 	// 必须先调用的函数。
-	inline bool Init(HINSTANCE hi, HWND hw, int width, int height, bool window){
-		return VoltaRenderEngine::Init(hi, hw, (float)width, (float)height, window);
-	};
-	void InitLib();
+	bool Init(HINSTANCE hi, HWND hw, int width, int height, bool window);
+	bool InitLib();
 	// 过渡时使用。应该删除的函数。
 	void AddShaderResourceFromFile(string ShaderName, LPCSTR file);
 	// ShaderName:Shader的名称。不应包括扩展名。
@@ -28,15 +27,12 @@ namespace VoltaEngine{
 		//	0, buffer, 0);
 	}
 	
-	// 不要调用这个函数。已在DisposeLibs中调用。
-	template<typename T1, typename T2>
-	void DisposeLib(map<T1, T2*>* l);
 	// 不要调用这个函数。已在Unload中调用。
 	void DisposeRecourses();
-	inline void Unload(){
-		VoltaRenderEngine::Dispose();
-		DisposeRecourses();
-	}
+	void Unload();
+
+	class LogicStep;
+	extern map<string, LogicStep*> LS_lib_;
 
 	extern map<string, ID3D11VertexShader*> VS_lib_;
 	extern map<string, ID3D11PixelShader*> PS_lib_;
@@ -54,6 +50,8 @@ namespace VoltaEngine{
 	extern map<string, D3D11_SAMPLER_DESC*> SDesc_lib_;
 	// 采样状态资源库。
 	extern map<string, ID3D11SamplerState*> SS_lib_;
+
+	extern map<string, ID3D11PixelShader*>& AniLib;
 	// 预设的输入布局。
 	extern ID3D11InputLayout* input_layout_;
 }

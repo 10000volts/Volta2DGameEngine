@@ -7,7 +7,7 @@ namespace VoltaEngine{
 		if(window) AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 
 		Window = window;
-
+		
 		WNDCLASSEX wndClass = { 0 };
 		wndClass.cbSize = sizeof(WNDCLASSEX);
 		wndClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -31,14 +31,16 @@ namespace VoltaEngine{
 		if (!VoltaEngine::Init(hInstance, hw, width, height, window))
 			return -1;
 
+		m_hwnd_ = hw;
+
 		return 0;
 	}
-	int RenderForm::TakeOver(HWND hw){
+	int RenderForm::TakeOver(){
 		if (Window){
-			ShowWindow(hw, V6SW_WINDOW);
+			ShowWindow(m_hwnd_, V6SW_WINDOW);
 		}
 		else{
-			ShowWindow(hw, V6SW_FULLSCREEN);
+			ShowWindow(m_hwnd_, V6SW_FULLSCREEN);
 		}
 
 		MSG msg = { 0 };
@@ -57,14 +59,14 @@ namespace VoltaEngine{
 			int fElapsedTime = static_cast<int>(fCurrentTime - fPreTime);
 			timeEndPeriod(1);
 
+			UpdateMousePos();
 			VoltaLogicEngine::Update(fElapsedTime);
 			VoltaRenderEngine::Render();
 
 			fPreTime = fCurrentTime;
 		}
 
-		VoltaRenderEngine::Dispose();
-		VoltaLogicEngine::Dispose();
+		VoltaEngine::Unload();
 
 		return static_cast<int>(msg.wParam);
 	}
@@ -84,10 +86,19 @@ namespace VoltaEngine{
 			break;
 
 		default:
+			VoltaLogicEngine::Handle(hwnd, message, wParam, lParam);
 			return DefWindowProc(hwnd, message, wParam, lParam);
 		}
 
 		return 0;
 	}
+	void RenderForm::UpdateMousePos(){
+		GetCursorPos(&mouse_pos_);
+		ScreenToClient(m_hwnd_, &mouse_pos_);
+		mouse_pos_.y = VoltaRenderEngine::render_height_ - mouse_pos_.y;
+	}
+
+	HWND RenderForm::m_hwnd_;
 	bool RenderForm::Window;
+	POINT RenderForm::mouse_pos_;
 }

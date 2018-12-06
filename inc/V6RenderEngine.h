@@ -20,18 +20,12 @@ namespace VoltaEngine{
 		void Click(int x, int y);
 		void ClickRight(int x, int y);
 		inline void AddSprite(Sprite* s){ Sprites.push_back(s); }
-		inline void AddControl(Control* c){ Controls.push_back(c); }
-		inline void AddTopControl(Control* c){ TopControls.push_back(c); }
 		inline void AddScreenShader(ShaderSprite* s){ ScreenShaders.push_back(s); }
 		inline void RemoveSprite(Sprite* s){ Sprites.remove(s); delete s; s = nullptr; }
-		inline void RemoveControl(Control* c){ Controls.remove(c); delete c; c = nullptr; }
-		inline void RemoveTopControl(Control* c){ TopControls.remove(c); delete c; c = nullptr; }
 		inline void RemoveScreenShader(ShaderSprite* s){ ScreenShaders.remove(s); delete s; s = nullptr; }
 	protected:
-		// 过渡使用。
+		// 可以考虑尽可能放入Batch中。
 		list<Sprite*> Sprites;
-		list<Control*> Controls;
-		list<Control*> TopControls;
 		// 需要从缓冲区采样的Shader。
 		list<ShaderSprite*> ScreenShaders;
 		// Batch

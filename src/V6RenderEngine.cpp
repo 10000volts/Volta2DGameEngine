@@ -208,7 +208,7 @@ namespace VoltaEngine{
 		// 设置色彩混合模式。
 		ChangeHighlightState();
 	}
-	void VoltaEngine::InitLib(){
+	bool VoltaEngine::InitLib(){
 		AddShaderResourceFromFile("Blur", "Blur.fx");
 		AddShaderResourceFromFile("BlurDy", "BlurDy.fx");
 		AddShaderResourceFromFile("FadeOut", "FadeOut.fx");
@@ -273,7 +273,10 @@ namespace VoltaEngine{
 		VoltaRenderEngine::m_d3dDevice_->CreateSamplerState(SDesc_lib_["CLAMP"],
 			&colorMapSampler);
 		MapInsert(&SS_lib_, static_cast<string>("CLAMP"), colorMapSampler);
+
+		return true;
 	}
+
 	// ShaderName:Shader的名称，不应包括扩展名。
 	void VoltaEngine::AddShaderResourceFromFile(string ShaderName, LPCSTR file){
 		ID3D11VertexShader* vsdefau;
@@ -431,20 +434,12 @@ namespace VoltaEngine{
 		for_each(Sprites.begin(), Sprites.end(), [](Sprite* one){
 			one->Render();
 		});
-		for_each(Controls.begin(), Controls.end(), [](Control* one){
-			one->Render();
-		});
-		for_each(TopControls.begin(), TopControls.end(), [](Control* one){
-			one->Render();
-		});
 		for_each(ScreenShaders.begin(), ScreenShaders.end(), [](ShaderSprite* one){
 			VoltaRenderEngine::SwapRenderTarget();
 			one->Render();
 		});
 	}
 	void VisualManager::Clear(){
-		DisposeList(&TopControls);
-		DisposeList(&Controls);
 		DisposeList(&ScreenShaders);
 		DisposeList(&Sprites);
 	}
@@ -452,25 +447,16 @@ namespace VoltaEngine{
 		return nullptr;
 	}
 
-	template<typename T1, typename T2>
-	void VoltaEngine::DisposeLib(map<T1, T2*>* l){
-		auto itor = l->begin();
-		while (itor != l->end()){
-			delete (*itor).second;
-			(*itor).second = nullptr;
-			l->erase(itor++);
-		}
-	}
 	void VoltaEngine::DisposeRecourses(){
-		DisposeLib(&VS_lib_);
-		DisposeLib(&PS_lib_);
+		DisposeCOMLib(&VS_lib_);
+		DisposeCOMLib(&PS_lib_);
 		DisposeLib(&BDesc_lib_);
 		DisposeLib(&IEDesc_lib_);
-		DisposeLib(&T_lib_);
+		DisposeCOMLib(&TVB_lib_);
 		TS_lib_.clear();
-		DisposeLib(&TVB_lib_);
+		DisposeCOMLib(&T_lib_);
 		DisposeLib(&SDesc_lib_);
-		DisposeLib(&SS_lib_);
+		DisposeCOMLib(&SS_lib_);
 		input_layout_->Release();
 		input_layout_ = nullptr;
 	}
@@ -567,5 +553,8 @@ namespace VoltaEngine{
 	map<string, D3D11_SAMPLER_DESC*> SDesc_lib_;
 	// 采样状态资源库。
 	map<string, ID3D11SamplerState*> SS_lib_;
+
+	// 动画库。实质上是Pixel Shader库的别名。
+	map<string, ID3D11PixelShader*>& AniLib = PS_lib_;
 	ID3D11InputLayout* input_layout_ = nullptr;
 }
