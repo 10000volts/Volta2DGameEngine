@@ -15,7 +15,13 @@ namespace VoltaEngine{
 		return scale * rotationZ * translation;
 	}
 
-	TexSprite::TexSprite(string TextureName, float x, float y, string psname, string ss, float w, float h, float p) : RectSprite(x, y, psname, ss, w, h, p){
+	TexSprite::TexSprite(string TextureName, float x, float y, string psname, string ss, float ws, float hs, float p) : RectSprite(x, y, psname, ss, ws, hs, p){
+		color_map_ = T_lib_[TextureName];
+		m_model_vertex_buffer_ = TVB_lib_[color_map_];
+		tex_width_ = TS_lib_[color_map_].x;
+		tex_height_ = TS_lib_[color_map_].y;
+	}
+	TexSprite::TexSprite(string TextureName, string psname, string ss, float ws, float hs, float p) : RectSprite(0.0f, 0.0f, psname, ss, ws, hs, p){
 		color_map_ = T_lib_[TextureName];
 		m_model_vertex_buffer_ = TVB_lib_[color_map_];
 		tex_width_ = TS_lib_[color_map_].x;
@@ -103,5 +109,24 @@ namespace VoltaEngine{
 
 			VoltaRenderEngine::m_d3dContext_->Draw(4, 0);
 		}
+	}
+
+	SelectBoard::SelectBoard(string op[], string br, float x, float y, float stridex, float stridey, int maxn,
+		string psname, string ss, float ws, float hs, float p) : Sprite(PS_lib_[psname], p, x, y), count_(maxn),
+		startx_(x), starty_(y), stridex_(stridex), stridey_(stridey){
+		for (int i = 0; i < maxn; ++i){
+			TexSprite* t = new TexSprite(op[i], x - stridex * i, y - stridey * i, psname, ss, ws, hs, p);
+			children_.push_back(t);
+		}
+		border_ = new TexSprite(br, x, y, psname, ss, ws, hs, p);
+	}
+	SelectBoard::SelectBoard(string op[], string br, float stridex, float stridey, int maxn,
+		string psname, string ss, float ws, float hs, float p) : Sprite(PS_lib_[psname], p, 0.0f, 0.0f), count_(maxn),
+		startx_(0.0f), starty_(0.0f), stridex_(stridex), stridey_(stridey){
+		for (int i = 0; i < maxn; ++i){
+			TexSprite* t = new TexSprite(op[i], 0.0f, 0.0f, psname, ss, ws, hs, p);
+			children_.push_back(t);
+		}
+		border_ = new TexSprite(br, 0.0f, 0.0f, psname, ss, ws, hs, p);
 	}
 }

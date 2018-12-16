@@ -4,7 +4,6 @@
 
 namespace VoltaEngine{
 	class LogicManager;
-	class Sprite;
 	class Control;
 
 	typedef void(*Event)(Control* sender, int arg1, int arg2, void* exdata);
@@ -43,12 +42,13 @@ namespace VoltaEngine{
 		void UpdateData(int t){}
 	};
 
+	// 控制器。
 	class Control : public SimpleLSprite{
 		friend class LogicManager;
 	public:
 		Control(Sprite* rs) : SimpleLSprite(rs), width_(0), height_(0), enter_(nullptr), leave_(nullptr), highlight_(nullptr),
 		enter_ani_(), leave_ani_(), highlight_ani_(){}
-		Control(Sprite* rs, float x, float y, int w, int h) : SimpleLSprite(rs, x, y), width_(w), height_(h),
+		Control(Sprite* rs, float x, float y, float w, float h) : SimpleLSprite(rs, x, y), width_(w), height_(h),
 			enter_(nullptr), leave_(nullptr), highlight_(nullptr),
 			enter_ani_(), leave_ani_(), highlight_ani_(){}
 		~Control(){
@@ -67,8 +67,8 @@ namespace VoltaEngine{
 		TimeFixedAnimation enter_ani_;
 		TimeFixedAnimation leave_ani_;
 		TimeFixedAnimation highlight_ani_;
-		int width_;
-		int height_;
+		float width_;
+		float height_;
 	protected:
 		Control(){}
 
@@ -81,15 +81,32 @@ namespace VoltaEngine{
 
 	class Button : public Control{
 	public:
-		Button(Sprite* rs, float x, float y, int w, int h, Event e,
+		Button(Sprite* rs, float x, float y, float w, float h, Event e,
 			TimeFixedAnimation* ea = nullptr, TimeFixedAnimation* la = nullptr, TimeFixedAnimation* ha = nullptr);
 	private:
 		Button(){}
 	};
 
-	// 使用键盘选择选项的控件组。
-	class SelectBoard : public Control{
+	// 使用键盘选择选项的控件组。L:Logic的缩写，表示逻辑。
+	class LSelectBoard : public Control{
+	public:
+		// moveup: 光标上移的按键。 idef: 默认光标位置。 ec: 元素总数。
+		LSelectBoard(SelectBoard* rs, float x, float y, float sx, float sy, float ew, float eh, int ec, int idef = 0, VKEY moveup = VK_UP, VKEY movedw = VK_DOWN);
+		void Sync() override;
 
+		// 当前光标所在的元素。
+		int curr_;
+		// 元素总数。
+		int ecount_;
+		int moveup_;
+		int movedw_;
+	
+		float stridex_;
+		float stridey_;
+		// 每个元素的宽度。
+		float ewidth_;
+		float eheight_;
+	protected:
 	};
 
 	// 使用键盘选择选项的控件组。选择选项的指示框的位置是固定的。

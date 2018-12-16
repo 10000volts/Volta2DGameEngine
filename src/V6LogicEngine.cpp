@@ -44,7 +44,8 @@ namespace VoltaEngine{
 				}
 				itor++;
 			}
-
+			
+			if (lm->hover_control_ != nullptr) lm->hover_control_->DoLeaveAni();
 			lm->hover_control_ = nullptr;
 		});
 		LS_lib_["CheckHovering"] = ls;

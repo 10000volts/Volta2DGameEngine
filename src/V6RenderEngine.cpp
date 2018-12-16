@@ -208,11 +208,29 @@ namespace VoltaEngine{
 		// 设置色彩混合模式。
 		ChangeHighlightState();
 	}
-	bool VoltaEngine::InitLib(){
-		AddShaderResourceFromFile("Blur", "Blur.fx");
-		AddShaderResourceFromFile("BlurDy", "BlurDy.fx");
-		AddShaderResourceFromFile("FadeOut", "FadeOut.fx");
+	void loadresource(string file){
+		if (file.find(".fx") != string::npos){
+			AddShaderResourceFromFile(GetFileName(file), file.c_str());
+		}
+		else if (file.find(".mp3") != string::npos){
 
+		}
+		else if (file.find(".dds") != string::npos){
+			AddTextureFromFile(GetFileName(file), file.c_str());
+		}
+	}
+	void LoadAll(){
+		WIN32_FIND_DATA p;
+		HANDLE h = FindFirstFile("*.*", &p);
+		string file = p.cFileName;
+		loadresource(file);
+		while (FindNextFile(h, &p)) {
+			file = p.cFileName;
+			loadresource(file);
+		}
+		return;
+	}
+	bool VoltaEngine::InitLib(){
 		// 添加用于读取纹理的着色器和输入布局。
 		ID3D11VertexShader* vsdefau;
 		ID3D11PixelShader* psdefau;
@@ -235,8 +253,6 @@ namespace VoltaEngine{
 		VS_lib_.insert(PAIRVS("TexSampler", vsdefau));
 		PS_lib_.insert(PAIRPS("TexSampler", psdefau));
 		psBuffer->Release();
-		AddTextureFromFile("image1", "image1.dds");
-		AddTextureFromFile("net", "net.dds");
 
 		D3D11_BUFFER_DESC* vertexDesc = new D3D11_BUFFER_DESC();
 		ZeroMemory(vertexDesc, sizeof(vertexDesc));
@@ -273,6 +289,8 @@ namespace VoltaEngine{
 		VoltaRenderEngine::m_d3dDevice_->CreateSamplerState(SDesc_lib_["CLAMP"],
 			&colorMapSampler);
 		MapInsert(&SS_lib_, static_cast<string>("CLAMP"), colorMapSampler);
+		
+		LoadAll();
 
 		return true;
 	}

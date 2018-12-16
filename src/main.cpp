@@ -8,35 +8,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPWSTR, int){
 
 		VoltaLogicEngine::Manager.AddStep("CheckHovering");
 
-		TexSprite* s = new TexSprite("image1", 450.0f, 360.0f);
-		s->angle_ = 0.4f;
-		VoltaRenderEngine::Manager.AddSprite(s);
-		
-		s = new TexSprite("image1", 600.0f, 460.0f);
-		s->highlight_ = true;
-		VoltaRenderEngine::Manager.AddSprite(s);
-
-		s = new TexSprite("image1", 700.0f, 300.0f);
-		VoltaRenderEngine::Manager.AddSprite(s);
-		Button* b = new Button(s, 700.0f, 300.0f, 200, 200,
-			[](Control* sender, int x, int y, void* ex){
-			RenderForm::Close();
-		}, &TimeFixedAnimation("FadeOut", 2000));
-		VoltaLogicEngine::Manager.AddControl(b);
-
-		//ShaderSprite* ss;
-		//ss = new ShaderSprite("Blur", 512.0f, 384.0f, 1024.0f, 768.0f, 0.5f, "CLAMP");
-		//VoltaRenderEngine::Manager.AddScreenShader(ss); 
-
-		//// 注释下面的这两行是模糊->清晰的效果，保留这两行是清晰->模糊的效果。
-		//ss = new ShaderSprite("Empty", 512.0f, 384.0f, 1024.0f, 768.0f, 0.5f, "CLAMP");
-		//VoltaRenderEngine::Manager.AddScreenShader(ss);
-
-		//ss = new ShaderSprite("FadeOut", 0.0f, 0.0f, 1024.0f, 768.0f, 0.5f, "CLAMP");
-		//VoltaRenderEngine::Manager.AddScreenShader(ss);
-		//SimpleLSprite* sls = new SimpleLSprite(ss, 512.0f, 384.0f);
-		//VoltaLogicEngine::Manager.AddSprite(sls);
-		//ss->StartAnimation(2000);
+		string op[] = {"gamestart", "settings", "quitgame"};
+		SelectBoard* sb = new SelectBoard(op, "underline", 50.0f, 100.0f, 3);
+		VoltaRenderEngine::Manager.AddSprite(sb);
+		LSelectBoard* lsb = new LSelectBoard(sb, 700.0f, 500.0f, 50.0f, 200.0f, 100.0f, 40.0f, 3);
+		VoltaLogicEngine::Manager.AddControl(lsb);
+		VoltaLogicEngine::Manager.focus_control_ = lsb;
 
 		return RenderForm::TakeOver();
 	}

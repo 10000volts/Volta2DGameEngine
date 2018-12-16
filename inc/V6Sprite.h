@@ -6,7 +6,12 @@
 #include "stdafx.h"
 
 namespace VoltaEngine{
+	class VoltaRenderEngine;
+	class LogicSprite;
+
 	typedef ID3D11PixelShader* Animation;
+	typedef ID3D11PixelShader* Shader;
+	
 	struct TimeFixedAnimation{
 		TimeFixedAnimation() : ani(nullptr), last_time(0){}
 		TimeFixedAnimation(Animation, int);
@@ -14,7 +19,6 @@ namespace VoltaEngine{
 		Animation ani;
 		int last_time;
 	};
-
 	// 带有采样纹理坐标的顶点结构。用于使用纹理的图片精灵和Shader精灵。
 	struct UVVertex{
 		UVVertex() : position(0, 0, 0), uv(0, 0){}
@@ -24,8 +28,7 @@ namespace VoltaEngine{
 		XMFLOAT3 position;
 		XMFLOAT2 uv;
 	};
-	class LogicSprite;
-	class VoltaRenderEngine;
+
 	class Sprite{
 		friend class VoltaRenderEngine;
 		friend class LogicSprite;
@@ -47,7 +50,6 @@ namespace VoltaEngine{
 		XMFLOAT2 position_;
 		bool animating_;
 	protected:
-		virtual XMMATRIX Transform() = 0;
 		inline void UpdateAnimation(int t){
 			time_ += t;
 			if (time_ >= last_time_){
@@ -80,10 +82,14 @@ namespace VoltaEngine{
 
 		ID3D11SamplerState* m_sampler_state_;
 	};
+
+	class SelectBoard;
 	class TexSprite : public RectSprite{
 		friend class VoltaRenderEngine;
+		friend class SelectBoard;
 	public:
 		TexSprite(string TextureName, float x, float y, string psname = "TexSampler", string ss = "BORDER", float ws = 1.0f, float hs = 1.0f, float p = 0.5f);
+		TexSprite(string TextureName, string psname = "TexSampler", string ss = "BORDER", float ws = 1.0f, float hs = 1.0f, float p = 0.5f);
 		~TexSprite(){ color_map_ = nullptr; }
 		void Render();
 
@@ -103,6 +109,50 @@ namespace VoltaEngine{
 
 	class TextSprite : public Sprite{
 
+	};
+
+	class LSelectBoard;
+	// 以图片为载体的选择板。
+	class SelectBoard : public Sprite{
+		friend class VoltaRenderEngine;
+		friend class LSelectBoard;
+	public:
+		// stridex:两个相邻元素间的横坐标之差。op: 选项用图。 br: 边框用图。 maxn:最大能显示的元素数量。
+		SelectBoard(string op[], string br, float x, float y, float stridex, float stridey, int maxn,
+			string psname = "TexSampler", string ss = "BORDER", float ws = 1.0f, float hs = 1.0f, float p = 0.5f);
+		SelectBoard(string op[], string br, float stridex, float stridey, int maxn,
+			string psname = "TexSampler", string ss = "BORDER", float ws = 1.0f, float hs = 1.0f, float p = 0.5f);
+		~SelectBoard(){
+			curr_ = nullptr;
+			children_.clear();
+			delete border_;
+			border_ = nullptr;
+		}
+		void Render(){
+			Transform();
+			for (int i = 0; i < count_; ++i){
+				children_[i]->Render();
+			}
+			border_->Render();
+		}
+	protected:
+		void Transform(){
+			for (int i = 0; i < count_; ++i){
+				children_[i]->Transform();
+			}
+			border_->Transform();
+		}
+
+		vector<TexSprite*> children_;
+		TexSprite* curr_;
+		TexSprite* border_;
+		// Count of children.
+		int count_;
+
+		float startx_;
+		float starty_;
+		float stridex_;
+		float stridey_;
 	};
 
 	class ShaderSprite : public Sprite{
